@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import type { User } from "../types/index.js";
+import type { User, UserInput } from "../types/index.js";
 import {
   getAllUsersModel,
   getUserByIdModel,
@@ -8,7 +8,7 @@ import {
   updateUserModel,
 } from "../models/userModel.js";
 
-async function getUserController(req, res, next) {
+const getUserController: RequestHandler = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const user = await getUserByIdModel(id);
@@ -16,19 +16,18 @@ async function getUserController(req, res, next) {
   } catch (err) {
     next(err);
   }
-}
+};
 
-async function getAllUsersController(req, res, next) {
-  // @audit-info cosa fare con request
+const getAllUsersController: RequestHandler = async (req, res, next) => {
   try {
     const user = await getAllUsersModel();
     res.status(200).json(user);
   } catch (err) {
     next(err);
   }
-}
+};
 
-async function createUserController(req, res, next) {
+const createUserController: RequestHandler = async (req, res, next) => {
   try {
     const { name, surname, email } = req.body;
     const userCreated = await createUserModel(name, surname, email);
@@ -36,27 +35,28 @@ async function createUserController(req, res, next) {
   } catch (err) {
     next(err);
   }
-}
+};
 
-async function updateUserController(req, res, next) {
+const updateUserController: RequestHandler = async (req, res, next) => {
   try {
-    const user: User = req.body;
-    const userUpdated = await updateUserModel(user);
+    const id = Number(req.params.id);
+    const userInput: UserInput = req.body;
+    const userUpdated = await updateUserModel(id, userInput);
     res.status(200).json(userUpdated);
   } catch (err) {
     next(err);
   }
-}
+};
 
-async function deleteUserController(req, res, next) {
+const deleteUserController: RequestHandler = async (req, res, next) => {
   try {
     const userId = Number(req.params.id);
-    const userDelated = await deleteUserModel(userId);
-    res.status(204).json(userDelated);
+    await deleteUserModel(userId);
+    res.status(204).send();
   } catch (err) {
     next(err);
   }
-}
+};
 
 export {
   getUserController,
