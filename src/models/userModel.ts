@@ -8,10 +8,6 @@ const getAllUsersModel = async (): Promise<User[]> => {
     "SELECT * FROM users",
   );
 
-  if (result.length === 0) {
-    throw new Error("get all users failed");
-  }
-
   return result;
 };
 

@@ -41,8 +41,8 @@ const updateUserController: RequestHandler = async (req, res, next) => {
   try {
     const id = Number(req.params.id);
     const userInput: UserInput = req.body;
-    const userUpdated = await updateUserModel(id, userInput);
-    res.status(200).json(userUpdated);
+    await updateUserModel(id, userInput);
+    res.status(204).send();
   } catch (err) {
     next(err);
   }
