@@ -11,6 +11,7 @@ export type UserInput = Omit<User, "id" | "createdAt">;
 
 export interface Product {
   id: number;
+  userId: number;
   name: string;
   createdAt: number;
 }
@@ -27,4 +28,11 @@ export interface SwapOrder {
   createdAt: number;
   products?: Product[];
   users?: User[];
+}
+
+export interface SwapOrderFilters {
+  startDate?: string;
+  endDate?: string;
+  productId?: number;
+  userId?: number;
 }

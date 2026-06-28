@@ -1,6 +1,45 @@
 // Swap Order model
-import type { PoolConnection, ResultSetHeader } from "mysql2/promise";
+import type {
+  PoolConnection,
+  ResultSetHeader,
+  RowDataPacket,
+} from "mysql2/promise";
+import type { SwapOrderFilters as Filters } from "../types/index.js";
 import pool from "../config/db.js";
+
+type Param = string | number;
+
+const getSwapOrdersModel = async (
+  filters?: Filters,
+): Promise<RowDataPacket[]> => {
+  const { conditions, params } = createConditionsAndParams(filters);
+
+  const where =
+    conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
+
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT 
+      swap_orders.id AS order_id,
+      swap_orders.created_at AS order_created_at,
+      products.id AS product_id,
+      products.name AS product_name,
+      products.created_at AS product_created_at,
+      users.id AS user_id,
+      users.name AS user_name,
+      users.surname AS user_surname,
+      users.email AS user_email,
+      users.created_at AS user_created_at
+    FROM swap_orders
+    JOIN swap_order_products ON swap_orders.id = swap_order_products.order_id
+    JOIN products ON swap_order_products.product_id = products.id
+    JOIN swap_order_users ON swap_orders.id = swap_order_users.order_id
+    JOIN users ON swap_order_users.user_id = users.id
+     ${where}`,
+    params,
+  );
+
+  return rows;
+};
 
 const createSwapOrderModel = async (
   productIds: number[],
@@ -95,4 +134,35 @@ const insertOrderUsers = async (
   );
 };
 
-export { createSwapOrderModel, updateSwapOrderModel, deleteSwapOrderModel };
+const createConditionsAndParams = (
+  filters?: Filters,
+): { conditions: string[]; params: Param[] } => {
+  const conditions: string[] = [];
+  const params: Param[] = [];
+
+  if (filters?.startDate) {
+    conditions.push("so.created_at >= ?");
+    params.push(filters.startDate);
+  }
+  if (filters?.endDate) {
+    conditions.push("so.created_at <= ?");
+    params.push(filters.endDate);
+  }
+  if (filters?.productId) {
+    conditions.push("p.id = ?");
+    params.push(filters.productId);
+  }
+  if (filters?.userId) {
+    conditions.push("u.id = ?");
+    params.push(filters.userId);
+  }
+
+  return { conditions, params };
+};
+
+export {
+  getSwapOrdersModel,
+  createSwapOrderModel,
+  updateSwapOrderModel,
+  deleteSwapOrderModel,
+};
