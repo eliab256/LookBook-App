@@ -30,8 +30,8 @@ const getAllUsersController: RequestHandler = async (req, res, next) => {
 const createUserController: RequestHandler = async (req, res, next) => {
   try {
     const { name, surname, email } = req.body;
-    const userCreated = await createUserModel(name, surname, email);
-    res.status(201).json(userCreated);
+    const userId = await createUserModel(name, surname, email);
+    res.status(201).json({ id: userId });
   } catch (err) {
     next(err);
   }

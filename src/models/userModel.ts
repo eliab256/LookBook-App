@@ -28,7 +28,7 @@ const createUserModel = async (
   name: string,
   surname: string,
   email: string,
-): Promise<void> => {
+): Promise<number> => {
   const [result] = await pool.execute<ResultSetHeader>(
     "INSERT INTO users (name, surname, email) VALUES (?, ?, ?)",
     [name, surname, email],
@@ -37,6 +37,8 @@ const createUserModel = async (
   if (result.affectedRows === 0) {
     throw new Error("create user failed");
   }
+
+  return result.insertId;
 };
 
 const updateUserModel = async (id: number, user: UserInput): Promise<void> => {
