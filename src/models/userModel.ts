@@ -2,6 +2,7 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import pool from "../config/db.js";
 import type { User, UserInput } from "../types/index.js";
+import AppError from "../errors/AppErrors.js";;
 
 const getAllUsersModel = async (): Promise<User[]> => {
   const [result] = await pool.execute<User[] & RowDataPacket[]>(
@@ -18,7 +19,7 @@ const getUserByIdModel = async (id: number): Promise<User> => {
   );
 
   if (result.length === 0) {
-    throw new Error("get user by id failed");
+    throw new AppError(404, "User not found");
   }
 
   return result[0];
@@ -35,7 +36,7 @@ const createUserModel = async (
   );
 
   if (result.affectedRows === 0) {
-    throw new Error("create user failed");
+    throw new AppError(400, "create user failed");
   }
 
   return result.insertId;
