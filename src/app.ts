@@ -12,13 +12,14 @@ const app = express();
 const PORT = process.env.PORT ?? 3000;
 
 app.use(express.json());
-app.use(errorMiddleware);
 
 // endpoint routers
 app.use("/users", userRouter);
 app.use("/products", productRouter);
 app.use("/swap-orders", swapOrderRouter);
 app.use("/uploads", express.static("uploads"));
+
+app.use(errorMiddleware);
 
 app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
