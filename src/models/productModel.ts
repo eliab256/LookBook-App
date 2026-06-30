@@ -2,6 +2,7 @@
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import pool from "../config/db.js";
 import type { Product } from "../types/index.js";
+import AppError from "../errors/AppErrors.js";
 
 const getAllProductsModel = async (): Promise<Product[]> => {
   const [result] = await pool.execute<Product[] & RowDataPacket[]>(
@@ -18,7 +19,7 @@ const getProductByIdModel = async (productId: number): Promise<Product> => {
   );
 
   if (result.length === 0) {
-    throw new Error("get product by id failed");
+    throw new AppError(404, "Product not found", "PRODUCT_NOT_FOUND");
   }
 
   return result[0];
@@ -29,26 +30,34 @@ const createProductModel = async (
   userId: number,
   photos: string[],
 ): Promise<number> => {
-  const [result] = await pool.execute<ResultSetHeader>(
-    "INSERT INTO products (name, user_id) VALUES (?, ?)",
-    [name, userId],
-  );
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
 
-  if (result.affectedRows === 0) {
-    throw new Error("create product failed");
-  }
+    const [result] = await connection.execute<ResultSetHeader>(
+      "INSERT INTO products (name, user_id) VALUES (?, ?)",
+      [name, userId],
+    );
 
-  const product_id = result.insertId;
+    const product_id = result.insertId;
 
-  await Promise.all(
-    photos.map((path) =>
-      pool.execute<ResultSetHeader>(
-        "INSERT INTO product_photos (product_id, path) VALUES (?, ?)",
-        [product_id, path],
+    await Promise.all(
+      photos.map((path) =>
+        connection.execute<ResultSetHeader>(
+          "INSERT INTO product_photos (product_id, path) VALUES (?, ?)",
+          [product_id, path],
+        ),
       ),
-    ),
-  );
-  return product_id;
+    );
+
+    await connection.commit();
+    return product_id;
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 };
 
 /**
@@ -62,37 +71,63 @@ const updateProductModel = async (
   productId: number,
   photos: string[],
 ): Promise<void> => {
-  const [result] = await pool.execute<ResultSetHeader>(
-    "UPDATE products SET name = ? WHERE id = ?",
-    [name, productId],
-  );
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
 
-  if (result.affectedRows === 0) {
-    throw new Error("Product not found");
-  }
+    const [result] = await connection.execute<ResultSetHeader>(
+      "UPDATE products SET name = ? WHERE id = ?",
+      [name, productId],
+    );
 
-  await pool.execute("DELETE FROM product_photos WHERE product_id = ?", [
-    productId,
-  ]);
+    if (result.affectedRows === 0) {
+      throw new AppError(404, "Product not found", "PRODUCT_NOT_FOUND");
+    }
 
-  await Promise.all(
-    photos.map((path) =>
-      pool.execute<ResultSetHeader>(
-        "INSERT INTO product_photos (product_id, path) VALUES (?, ?)",
-        [productId, path],
+    await connection.execute(
+      "DELETE FROM product_photos WHERE product_id = ?",
+      [productId],
+    );
+
+    await Promise.all(
+      photos.map((path) =>
+        connection.execute<ResultSetHeader>(
+          "INSERT INTO product_photos (product_id, path) VALUES (?, ?)",
+          [productId, path],
+        ),
       ),
-    ),
-  );
+    );
+
+    await connection.commit();
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 };
 
 const deleteProductModel = async (productId: number): Promise<void> => {
+  const [orders] = await pool.execute<RowDataPacket[]>(
+    "SELECT 1 FROM swap_order_products WHERE product_id = ? LIMIT 1",
+    [productId],
+  );
+
+  if (orders.length > 0) {
+    throw new AppError(
+      409,
+      "Product is part of a swap order and cannot be deleted",
+      "PRODUCT_IN_USE",
+    );
+  }
+
   const [result] = await pool.execute<ResultSetHeader>(
     "DELETE FROM products WHERE id = ?",
     [productId],
   );
 
   if (result.affectedRows === 0) {
-    throw new Error("Product not found");
+    throw new AppError(404, "Product not found", "PRODUCT_NOT_FOUND");
   }
 };
 

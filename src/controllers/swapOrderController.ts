@@ -9,6 +9,19 @@ import {
   deleteSwapOrderModel,
 } from "../models/swapOrderModel.js";
 
+import { z } from "zod";
+import validate from "../utils/validateUtil.js";
+import validateId from "../utils/validateIdUtil.js";
+
+const swapOrderInputSchema = z.object({
+  productIds: z
+    .array(z.number().int().positive())
+    .min(1, "At least one product is required"),
+  userIds: z
+    .array(z.number().int().positive())
+    .min(1, "At least one user is required"),
+});
+
 const getSwapOrdersController: RequestHandler = async (req, res, next) => {
   try {
     const filters: SwapOrderFilters = {
@@ -27,10 +40,7 @@ const getSwapOrdersController: RequestHandler = async (req, res, next) => {
 
 const createSwapOrderController: RequestHandler = async (req, res, next) => {
   try {
-    const { productIds, userIds } = req.body as {
-      productIds: number[];
-      userIds: number[];
-    };
+    const { productIds, userIds } = validate(swapOrderInputSchema, req.body);
 
     const orderId = await createSwapOrderModel(productIds, userIds);
     res.status(201).json({ id: orderId });
@@ -42,10 +52,8 @@ const createSwapOrderController: RequestHandler = async (req, res, next) => {
 const updateSwapOrderController: RequestHandler = async (req, res, next) => {
   try {
     const orderId = Number(req.params.id);
-    const { productIds, userIds } = req.body as {
-      productIds: number[];
-      userIds: number[];
-    };
+    validateId(orderId);
+    const { productIds, userIds } = validate(swapOrderInputSchema, req.body);
 
     await updateSwapOrderModel(orderId, productIds, userIds);
     res.status(204).send();
@@ -57,6 +65,7 @@ const updateSwapOrderController: RequestHandler = async (req, res, next) => {
 const deleteSwapOrderController: RequestHandler = async (req, res, next) => {
   try {
     const orderId = Number(req.params.id);
+    validateId(orderId);
     await deleteSwapOrderModel(orderId);
     res.status(204).send();
   } catch (err) {

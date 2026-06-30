@@ -6,6 +6,7 @@ import type {
 } from "mysql2/promise";
 import type { SwapOrderFilters as Filters } from "../types/index.js";
 import pool from "../config/db.js";
+import AppError from "../errors/AppErrors.js";
 
 type Param = string | number;
 
@@ -73,6 +74,16 @@ const updateSwapOrderModel = async (
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
+
+    const [existing] = await connection.execute<RowDataPacket[]>(
+      "SELECT id FROM swap_orders WHERE id = ?",
+      [orderId],
+    );
+
+    if (existing.length === 0) {
+      throw new AppError(404, "Swap order not found", "SWAP_ORDER_NOT_FOUND");
+    }
+
     await connection.execute(
       "DELETE FROM swap_order_products WHERE order_id = ?",
       [orderId],
@@ -99,7 +110,7 @@ const deleteSwapOrderModel = async (orderId: number): Promise<void> => {
   );
 
   if (result.affectedRows === 0) {
-    throw new Error("Swap order not found");
+    throw new AppError(404, "Swap order not found", "SWAP_ORDER_NOT_FOUND");
   }
 };
 

@@ -7,8 +7,6 @@ export interface User {
   createdAt: number;
 }
 
-export type UserInput = Omit<User, "id" | "createdAt">;
-
 export interface Product {
   id: number;
   userId: number;

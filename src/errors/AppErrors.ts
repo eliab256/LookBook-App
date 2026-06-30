@@ -1,3 +1,4 @@
+//App errors
 class AppError extends Error {
   statusCode: number;
   code: string;
